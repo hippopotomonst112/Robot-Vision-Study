@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nana 챗봇</title>
+    <!-- 간단한 스타일을 추가합니다. -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            width: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+        .message.user {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end; 
+        }
+        .message.bot {
+            background-color: #e9e9eb;
+            color: #333;
+            align-self: flex-start; 
+        }
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #ddd;
+            padding: 10px;
+        }
+        #userInput {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 14px;
+            outline: none;
+        }
+        #sendButton {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <!-- 메시지 표시 영역 -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">안녕하세요! 저는 Nana 챗봇이에요. 무엇을 도와드릴까요?</div>
+        </div>
+        
+        <!-- 사용자 입력 영역 -->
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="메시지를 입력하세요..." autocomplete="off">
+            <button id="sendButton">➤</button>
+        </div>
+    </div>
+
+    <!-- 
+      chat.js 파일을 불러옵니다.
+      url_for를 사용하면 Flask가 static 폴더에서 파일을 자동으로 찾아줍니다.
+    -->
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+</body>
+</html>
