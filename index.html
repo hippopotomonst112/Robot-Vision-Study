@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NANA — Robot AI Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #7efff5;
+      --accent2: #a78bfa;
+      --text: #e2e2f0;
+      --muted: #5a5a7a;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Noto Sans KR', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow-x: hidden;
+    }
+
+    /* ── Noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 999; opacity: .4;
+    }
+
+    /* ── Grid lines ── */
+    .grid-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(126,255,245,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(126,255,245,.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1.2rem 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      background: rgba(10,10,15,.8);
+    }
+    .nav-logo {
+      font-family: var(--mono);
+      font-size: .85rem;
+      color: var(--accent);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: .1em;
+      transition: color .2s;
+    }
+    .nav-link:hover { color: var(--accent); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 8rem 3rem 4rem;
+      max-width: 1100px; margin: 0 auto;
+    }
+
+    .hero-tag {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--accent);
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+      opacity: 0;
+      animation: fadeUp .6s .2s forwards;
+    }
+    .hero-tag span {
+      display: inline-block;
+      width: 2rem; height: 1px;
+      background: var(--accent);
+      vertical-align: middle;
+      margin-right: .8rem;
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(3.5rem, 10vw, 8rem);
+      font-weight: 700;
+      line-height: .95;
+      letter-spacing: -.02em;
+      margin-bottom: 2rem;
+      opacity: 0;
+      animation: fadeUp .7s .35s forwards;
+    }
+    h1 .accent { color: var(--accent); }
+    h1 .dim { color: var(--muted); }
+
+    .hero-desc {
+      max-width: 540px;
+      font-size: 1rem;
+      line-height: 1.8;
+      color: #9090b0;
+      font-weight: 300;
+      margin-bottom: 3rem;
+      opacity: 0;
+      animation: fadeUp .7s .5s forwards;
+    }
+
+    .hero-actions {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeUp .7s .65s forwards;
+    }
+
+    .btn {
+      font-family: var(--mono);
+      font-size: .8rem;
+      letter-spacing: .1em;
+      text-decoration: none;
+      padding: .9rem 2rem;
+      border-radius: 4px;
+      transition: all .25s;
+      display: inline-flex; align-items: center; gap: .6rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0a0f;
+      font-weight: 700;
+    }
+    .btn-primary:hover {
+      background: #fff;
+      box-shadow: 0 0 30px rgba(126,255,245,.3);
+      transform: translateY(-2px);
+    }
+    .btn-ghost {
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* ── STATS ── */
+    .stats {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .stat {
+      padding: 2.5rem 3rem;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: .4rem;
+    }
+    .stat-label {
+      font-size: .8rem;
+      color: var(--muted);
+      letter-spacing: .05em;
+    }
+
+    /* ── SECTION ── */
+    section {
+      position: relative; z-index: 1;
+      padding: 6rem 3rem;
+      max-width: 1100px; margin: 0 auto;
+    }
+
+    .section-tag {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--accent2);
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-family: var(--mono);
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 700;
+      margin-bottom: 3rem;
+      line-height: 1.1;
+    }
+
+    /* ── ABOUT ── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: start;
+    }
+    .about-text p {
+      color: #9090b0;
+      line-height: 1.9;
+      font-weight: 300;
+      margin-bottom: 1.2rem;
+    }
+    .about-text p strong { color: var(--text); font-weight: 700; }
+
+    .tech-list {
+      display: flex; flex-wrap: wrap; gap: .6rem;
+    }
+    .tech-tag {
+      font-family: var(--mono);
+      font-size: .72rem;
+      padding: .4rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      letter-spacing: .08em;
+      transition: all .2s;
+    }
+    .tech-tag:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── ARCHITECTURE ── */
+    .arch-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      font-family: var(--mono);
+      font-size: .8rem;
+    }
+    .arch-node {
+      background: #0a0a0f;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .7rem 1.2rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .arch-node.highlight {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .arch-arrow {
+      color: var(--muted);
+      padding: 0 .8rem;
+      font-size: 1rem;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-icon {
+      font-size: 1.3rem;
+      margin-bottom: .8rem;
+    }
+    .feature-title {
+      font-family: var(--mono);
+      font-size: .8rem;
+      color: var(--text);
+      margin-bottom: .5rem;
+      letter-spacing: .05em;
+    }
+    .feature-desc {
+      font-size: .82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── DEMO CTA ── */
+    .cta-section {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 6rem 3rem;
+      text-align: center;
+      overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(126,255,245,.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      margin-bottom: 1rem;
+    }
+    .cta-section p {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 2rem 3rem;
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--muted);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity .7s, transform .7s;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── CURSOR DOT ── */
+    .cursor {
+      display: inline-block;
+      width: 10px; height: 1.1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.5rem; }
+      .hero { padding: 7rem 1.5rem 3rem; }
+      .stats { grid-template-columns: 1fr; }
+      .stat { border-right: none; border-bottom: 1px solid var(--border); }
+      section { padding: 4rem 1.5rem; }
+      .about-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .arch-flow { flex-direction: column; align-items: flex-start; }
+      .arch-arrow { transform: rotate(90deg); }
+      footer { flex-direction: column; gap: 1rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">// NANA</div>
+  <a class="nav-link" href="https://robot-vision-study-1.onrender.com" target="_blank">→ DEMO 열기</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag"><span></span>Robot AI Project</div>
+  <h1>
+    N<span class="accent">A</span>NA<br>
+    <span class="dim">챗봇</span>
+  </h1>
+  <p class="hero-desc">
+    Python Flask와 자연어 처리 기반의 로봇 제어 인터페이스.<br>
+    텍스트 명령을 통해 로봇과 대화하고 정보를 주고받는 지능형 어시스턴트입니다.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="https://robot-vision-study-1.onrender.com" target="_blank">
+      ▶ 데모 체험하기
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/hippopotomonst112/Robot-Vision-Study" target="_blank">
+      ↗ GitHub 보기
+    </a>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats reveal">
+  <div class="stat">
+    <div class="stat-num">40+</div>
+    <div class="stat-label">학습된 대화 패턴</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">3</div>
+    <div class="stat-label">핵심 기술 스택</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">24/7</div>
+    <div class="stat-label">온라인 서비스</div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section>
+  <div class="section-tag">// 01. about</div>
+  <h2>프로젝트 소개<span class="cursor"></span></h2>
+  <div class="about-grid">
+    <div class="about-text reveal">
+      <p>
+        <strong>NANA</strong>는 <strong>Naturalized Advanced Network Assistant</strong>의 약자로,
+        자연스러운 대화형 로봇 제어 시스템입니다.
+      </p>
+      <p>
+        사용자의 텍스트 입력을 분석하여 로봇 하드웨어 제어, 센서 정보 안내,
+        로봇공학 지식 응답 등 다양한 기능을 수행합니다.
+      </p>
+      <p>
+        Flask 백엔드와 순수 HTML/CSS/JS 프론트엔드로 구성되어 있으며,
+        Render 플랫폼을 통해 24시간 서비스됩니다.
+      </p>
+    </div>
+    <div class="reveal">
+      <p style="font-family:var(--mono); font-size:.7rem; color:var(--muted); margin-bottom:1rem; letter-spacing:.1em;">TECH STACK</p>
+      <div class="tech-list">
+        <span class="tech-tag">Python 3</span>
+        <span class="tech-tag">Flask</span>
+        <span class="tech-tag">JavaScript</span>
+        <span class="tech-tag">HTML5</span>
+        <span class="tech-tag">CSS3</span>
+        <span class="tech-tag">REST API</span>
+        <span class="tech-tag">Render</span>
+        <span class="tech-tag">GitHub</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="section-tag">// 02. architecture</div>
+  <h2>구동 방식</h2>
+  <div class="arch-card reveal">
+    <div class="arch-flow">
+      <div class="arch-node highlight">사용자 입력</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">chat.js (fetch)</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node highlight">Flask /chat</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">응답 매칭</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node highlight">JSON 응답</div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">화면 출력</div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">실시간 응답</div>
+      <div class="feature-desc">비동기 fetch API를 통해 페이지 새로고침 없이 즉각적인 대화가 가능합니다.</div>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">로봇공학 특화</div>
+      <div class="feature-desc">LiDAR, IMU, SLAM, ROS 등 로봇공학 전문 지식을 학습한 어시스턴트입니다.</div>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">🌐</div>
+      <div class="feature-title">클라우드 배포</div>
+      <div class="feature-desc">Render 플랫폼에 배포되어 인터넷이 있다면 어디서든 접속 가능합니다.</div>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">🔧</div>
+      <div class="feature-title">확장 가능</div>
+      <div class="feature-desc">응답 데이터를 추가하는 것만으로 학습 내용을 쉽게 확장할 수 있습니다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="section-tag">// 03. demo</div>
+  <h2>직접 대화해보세요</h2>
+  <p>NANA에게 로봇, 기술, 일상 모든 주제로 말을 걸어보세요.</p>
+  <a class="btn btn-primary" href="https://robot-vision-study-1.onrender.com" target="_blank">
+    ▶ 챗봇 열기
+  </a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2026 hippopotomonst112</span>
+  <span>NANA — Robot AI Assistant</span>
+</footer>
+
+<script>
+  // Scroll reveal
+  const els = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  els.forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
